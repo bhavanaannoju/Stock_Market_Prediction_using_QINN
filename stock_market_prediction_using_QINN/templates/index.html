@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Predictor</title>
+    <style>
+        /* --- Reset and Base Styles --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #111827;
+            /* bg-gray-900 */
+            color: #ffffff;
+            /* text-white */
+            overflow: hidden;
+            /* Prevents scrollbars from the canvas */
+        }
+
+        /* --- Animated Background --- */
+        #stock-animation-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        /* --- Layout Containers --- */
+        .main-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .glass-container {
+            width: 100%;
+            max-width: 42rem;
+            /* max-w-2xl */
+            padding: 2rem;
+            /* p-8 */
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        #form-container,
+        #result-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            /* space-y-6 */
+        }
+
+        .header {
+            text-align: center;
+        }
+
+        /* --- Typography --- */
+        .title {
+            font-size: 2.25rem;
+            /* text-4xl */
+            font-weight: 700;
+            /* font-bold */
+            letter-spacing: -0.025em;
+            /* tracking-tight */
+        }
+
+        .subtitle {
+            color: #D1D5DB;
+            /* text-gray-300 */
+            margin-top: 0.5rem;
+            /* mt-2 */
+        }
+
+        /* --- Form Elements --- */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            /* gap-6 */
+        }
+
+        @media (min-width: 768px) {
+
+            /* md: */
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+                /* md:grid-cols-2 */
+            }
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            /* text-sm */
+            font-weight: 500;
+            /* font-medium */
+            color: #E5E7EB;
+            /* text-gray-200 */
+            margin-bottom: 0.5rem;
+            /* mb-2 */
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            /* rounded-lg */
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .form-input::placeholder {
+            color: #9CA3AF;
+            /* placeholder-gray-400 */
+        }
+
+        .form-input:focus {
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            outline: 2px solid #3B82F6;
+            /* focus:ring-2 focus:ring-blue-500 */
+            outline-offset: 2px;
+        }
+
+        .file-input {
+            font-size: 0.875rem;
+            /* text-sm */
+            color: #D1D5DB;
+            /* text-gray-300 */
+            cursor: pointer;
+        }
+
+        .file-input::-webkit-file-upload-button {
+            background: rgba(59, 130, 246, 0.7);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .file-input::-webkit-file-upload-button:hover {
+            background: rgba(59, 130, 246, 1);
+        }
+
+        /* --- Buttons --- */
+        .button {
+            width: 100%;
+            color: white;
+            font-weight: 700;
+            /* font-bold */
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            /* rounded-lg */
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .button:focus {
+            outline: 2px solid #3B82F6;
+            outline-offset: 2px;
+        }
+
+        .predict-button {
+            background-color: #2563EB;
+            /* bg-blue-600 */
+        }
+
+        .predict-button:hover {
+            background-color: #1D4ED8;
+            /* hover:bg-blue-700 */
+            transform: scale(1.05);
+        }
+
+        .reset-button {
+            background-color: #4B5563;
+            /* bg-gray-600 */
+            align-self: center;
+            width: auto;
+            padding: 0.5rem 1.5rem;
+        }
+
+        .reset-button:hover {
+            background-color: #374151;
+            /* hover:bg-gray-700 */
+        }
+
+        /* --- Loading and Result States --- */
+        .hidden {
+            display: none !important;
+        }
+
+        #loading-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            /* space-y-4 */
+            margin-top: 2rem;
+            /* mt-8 */
+        }
+
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-left-color: #ffffff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #result-container {
+            margin-top: 2rem;
+            /* mt-8 */
+            text-align: center;
+        }
+
+        .result-title {
+            font-size: 1.875rem;
+            /* text-3xl */
+            font-weight: 700;
+            /* font-bold */
+            margin-bottom: 1rem;
+            /* mb-4 */
+        }
+
+        #prediction-output {
+            font-size: 1.5rem;
+            /* text-2xl */
+            font-weight: 600;
+            /* font-semibold */
+            margin-bottom: 0.5rem;
+            /* mb-2 */
+        }
+
+        #trend-output {
+            font-size: 1.125rem;
+            /* text-lg */
+            color: #D1D5DB;
+            /* text-gray-300 */
+            margin-bottom: 1.5rem;
+            /* mb-6 */
+        }
+    </style>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Canvas Animation Setup ---
+            const canvas = document.getElementById('stock-animation-canvas');
+            const ctx = canvas.getContext('2d');
+
+            let width = canvas.width = window.innerWidth;
+            let height = canvas.height = window.innerHeight;
+
+            window.addEventListener('resize', () => {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            });
+
+            const symbols = ['$', '€', '¥', '£', '📈', '📉', '₿', '▲', '▼', '₹'];
+            const particles = [];
+            const particleCount = 100;
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    // Increased the size of the symbols
+                    this.size = Math.random() * 30 + 20; // Previously Math.random() * 15 + 10
+                    this.speedX = Math.random() * 1 - 0.5;
+                    this.speedY = Math.random() * 1 - 0.5;
+                    this.symbol = symbols[Math.floor(Math.random() * symbols.length)];
+                    this.opacity = Math.random() * 0.5 + 0.2;
+                }
+
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+
+                    if (this.x > width + 20 || this.x < -20 || this.y > height + 20 || this.y < -20) {
+                        this.x = Math.random() * width;
+                        this.y = -20;
+                    }
+                }
+
+                draw() {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                    ctx.font = `${this.size}px Arial`;
+                    ctx.fillText(this.symbol, this.x, this.y);
+                }
+            }
+
+            function initParticles() {
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push(new Particle());
+                }
+            }
+
+            function animateParticles() {
+                ctx.clearRect(0, 0, width, height);
+                for (let i = 0; i < particles.length; i++) {
+                    particles[i].update();
+                    particles[i].draw();
+                }
+                requestAnimationFrame(animateParticles);
+            }
+
+            initParticles();
+            animateParticles();
+
+            // --- Form Handling ---
+            const formContainer = document.getElementById('form-container');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const resultContainer = document.getElementById('result-container');
+            const predictionForm = document.getElementById('prediction-form');
+            const resetButton = document.getElementById('reset-button');
+
+            // predictionForm.addEventListener('submit', (e) => {
+            //     e.preventDefault(); // Prevent actual form submission
+
+            //     // 1. Hide the form and show the loader
+            //     formContainer.style.opacity = '0';
+            //     setTimeout(() => {
+            //         formContainer.classList.add('hidden');
+            //         loadingIndicator.classList.remove('hidden');
+            //     }, 500);
+
+
+            //     // 2. Simulate ML model processing
+            //     setTimeout(() => {
+            //         // Hide loader
+            //         loadingIndicator.classList.add('hidden');
+
+            //         // Prepare dummy results
+            //         // const stockName = document.getElementById('stock-name').value || "Stock";
+            //         // const randomPrice = (Math.random() * 1000 + 50).toFixed(2);
+            //         // const isBullish = Math.random() > 0.5;
+
+            //         // const predictionOutput = document.getElementById('prediction-output');
+            //         // const trendOutput = document.getElementById('trend-output');
+
+            //         // predictionOutput.textContent = `${stockName} Predicted Price: $${randomPrice}`;
+            //         // trendOutput.textContent = `Trend: ${isBullish ? 'Bullish 📈' : 'Bearish 📉'}`;
+            //         // predictionOutput.style.color = isBullish ? '#4ade80' : '#f87171';
+
+            //         // Show results
+            //         resultContainer.classList.remove('hidden');
+
+            //     }, 3000); // Simulate a 3-second prediction time
+            // });
+
+
+            // resetButton.addEventListener('click', () => {
+            //     // Hide results and show form again
+            //     resultContainer.classList.add('hidden');
+            //     formContainer.classList.remove('hidden');
+            //     setTimeout(() => {
+            //         formContainer.style.opacity = '1';
+            //     }, 10); // small delay for transition
+            //     predictionForm.reset(); // Clear the form fields
+            // });
+        });
+    </script>
+</head>
+
+<body>
+
+    <canvas id="stock-animation-canvas"></canvas>
+
+    <div class="main-container">
+
+        <div id="form-container" class="glass-container">
+            <div class="header">
+                <h1 class="title">Stock Price Predictor</h1>
+                <p class="subtitle">Enter the details below to get a prediction</p>
+            </div>
+
+            <!-- <form id="prediction-form">
+                <div class="form-grid">
+                    <div>
+                        <label for="date" class="form-label">Date</label>
+                        <input type="date" id="date" name="date" required class="form-input">
+                    </div>
+                    <div>
+                        <label for="stock-name" class="form-label">Stock Name</label>
+                        <input type="text" id="stock-name" name="stock-name" placeholder="e.g., AAPL, GOOGL" required class="form-input">
+                    </div> 
+                
+                    </div>
+
+                <div>
+                    <label for="historical-data" class="form-label">Historical Data (.csv)</label>
+                    <input type="file" id="historical-data" name="historical-data" accept=".csv" required class="form-input file-input">
+                </div>
+                <div>
+                    <label for="historical-data" class="form-label">Current Data (.csv)</label>
+                    <input type="file" id="historical-data" name="historical-data" accept=".csv" required class="form-input file-input">
+                </div>
+                
+                <div>
+                    <label for="news" class="form-label">Recent News or Market Sentiment</label>
+                    <textarea id="news" name="news" rows="4" placeholder="Paste relevant news articles or describe market sentiment..." class="form-input"></textarea>
+                </div>
+                
+                <div>
+                    <button type="submit" class="button predict-button">
+                        Predict Price
+                    </button>
+                </div>
+                </div>
+            </form> -->
+
+            <!-- <form id="prediction-form" action="/predict" method="POST" enctype="multipart/form-data">
+                <div class="form-grid">
+        <div>
+            <label for="historical-data" class="form-label">Historical Data (.csv)</label>
+            <input type="file" id="historical-data" name="historical-data" accept=".csv" required>
+        </div>
+        <br>
+        <div>
+            <label for="current-data" class="form-label">Current Data (.csv)</label>
+            <input type="file" id="current-data" name="current-data" accept=".csv" required>
+        </div>
+        </div>
+        <br>
+        <div>
+            <label for="news" class="form-label">Recent News or Market Sentiment</label><br>
+            <textarea id="news" name="news" rows="4" cols="50" placeholder="Paste relevant news articles or describe market sentiment..."></textarea>
+        </div>
+        <br>
+        <div>
+            <button type="submit">
+                Predict Price
+            </button>
+        </div>
+    </form> -->
+
+            <form id="prediction-form" action="/predict" method="POST" enctype="multipart/form-data">
+                <div class="form-grid">
+                    <div>
+                        <label for="historical-data" class="form-label">Historical Data (.csv)</label>
+                        <input type="file" id="historical-data" name="historical-data" accept=".csv" required
+                            class="form-input file-input">
+                    </div>
+                    <br>
+                    <div>
+                        <label for="current-data" class="form-label">Current Data (.csv)</label>
+                        <input type="file" id="current-data" name="current-data" accept=".csv" required
+                            class="form-input file-input">
+                    </div>
+                </div>
+                <br>
+                <div>
+                    <label for="news" class="form-label">Recent News or Market Sentiment</label><br>
+                    <textarea id="news" name="news" rows="4" cols="50"
+                        placeholder="Paste relevant news articles or describe market sentiment..."
+                        class="form-input"></textarea>
+                </div>
+                <br>
+                <div>
+                    <button type="submit" class="button predict-button">
+                        Predict Price
+                    </button>
+                </div>
+            </form>
+
+</body>
+<!-- </html>
+        
+        <div id="loading-indicator" class="hidden">
+            <div class="loader"></div>
+            <p style="font-size: 1.125rem; font-weight: 500;">Analyzing data and making prediction...</p>
+        </div>
+
+        <div id="result-container" class="hidden glass-container">
+            <h2 class="result-title">Prediction Result</h2>
+            <div id="prediction-output"></div>
+            <div id="trend-output"></div>
+            <button id="reset-button" class="button reset-button">
+                Make Another Prediction
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Canvas Animation Setup ---
+            const canvas = document.getElementById('stock-animation-canvas');
+            const ctx = canvas.getContext('2d');
+
+            let width = canvas.width = window.innerWidth;
+            let height = canvas.height = window.innerHeight;
+
+            window.addEventListener('resize', () => {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            });
+
+            const symbols = ['$', '€', '¥', '£', '📈', '📉', '₿', '▲', '▼','₹'];
+            const particles = [];
+            const particleCount = 100;
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    // Increased the size of the symbols
+                    this.size = Math.random() * 30 + 20; // Previously Math.random() * 15 + 10
+                    this.speedX = Math.random() * 1 - 0.5;
+                    this.speedY = Math.random() * 1 - 0.5;
+                    this.symbol = symbols[Math.floor(Math.random() * symbols.length)];
+                    this.opacity = Math.random() * 0.5 + 0.2;
+                }
+
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+
+                    if (this.x > width + 20 || this.x < -20 || this.y > height + 20 || this.y < -20) {
+                        this.x = Math.random() * width;
+                        this.y = -20;
+                    }
+                }
+
+                draw() {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                    ctx.font = `${this.size}px Arial`;
+                    ctx.fillText(this.symbol, this.x, this.y);
+                }
+            }
+
+            function initParticles() {
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push(new Particle());
+                }
+            }
+
+            function animateParticles() {
+                ctx.clearRect(0, 0, width, height);
+                for (let i = 0; i < particles.length; i++) {
+                    particles[i].update();
+                    particles[i].draw();
+                }
+                requestAnimationFrame(animateParticles);
+            }
+
+            initParticles();
+            animateParticles();
+
+            // --- Form Handling ---
+            const formContainer = document.getElementById('form-container');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const resultContainer = document.getElementById('result-container');
+            const predictionForm = document.getElementById('prediction-form');
+            const resetButton = document.getElementById('reset-button');
+
+            predictionForm.addEventListener('submit', (e) => {
+                e.preventDefault(); // Prevent actual form submission
+
+                // 1. Hide the form and show the loader
+                formContainer.style.opacity = '0';
+                setTimeout(() => {
+                    formContainer.classList.add('hidden');
+                    loadingIndicator.classList.remove('hidden');
+                }, 500);
+
+
+                // 2. Simulate ML model processing
+                setTimeout(() => {
+                    // Hide loader
+                    loadingIndicator.classList.add('hidden');
+
+                    // Prepare dummy results
+                    const stockName = document.getElementById('stock-name').value || "Stock";
+                    const randomPrice = (Math.random() * 1000 + 50).toFixed(2);
+                    const isBullish = Math.random() > 0.5;
+                    
+                    const predictionOutput = document.getElementById('prediction-output');
+                    const trendOutput = document.getElementById('trend-output');
+
+                    predictionOutput.textContent = `${stockName} Predicted Price: $${randomPrice}`;
+                    trendOutput.textContent = `Trend: ${isBullish ? 'Bullish 📈' : 'Bearish 📉'}`;
+                    predictionOutput.style.color = isBullish ? '#4ade80' : '#f87171';
+
+                    // Show results
+                    resultContainer.classList.remove('hidden');
+
+                }, 3000); // Simulate a 3-second prediction time
+            });
+
+            resetButton.addEventListener('click', () => {
+                // Hide results and show form again
+                resultContainer.classList.add('hidden');
+                formContainer.classList.remove('hidden');
+                setTimeout(() => {
+                    formContainer.style.opacity = '1';
+                }, 10); // small delay for transition
+                predictionForm.reset(); // Clear the form fields
+            });
+        });
+    </script>
+</body>
+</html> -->
